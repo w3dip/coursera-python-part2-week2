@@ -8,34 +8,65 @@ import math
 SCREEN_DIM = (800, 600)
 
 
+class Vec2d:
+    def __init__(self, point):
+        x, y = point
+        # if len(args) == 1:
+        #     self.x = args[0][0]
+        #     self.y = args[0][1]
+        # elif len(args) == 2:
+        self.x = x
+        self.y = y
+
+    def __add__(self, other):
+        """возвращает сумму двух векторов"""
+        return Vec2d((self.x + other.x, self.y + other.y))
+
+    def __sub__(self, other):
+        """"возвращает разность двух векторов"""
+        return Vec2d((self.x - other.x, self.y - other.y))
+
+    def __mul__(self, k):
+        """возвращает произведение вектора на число"""
+        return Vec2d((self.x * k, self.y * k))
+
+    @staticmethod
+    def len(a):
+        """возвращает длину вектора"""
+        return math.sqrt(a.x * a.x + a.y * a.y)
+
+    def int_pair(self):
+        return int(self.x), int(self.y)
+
+
 # =======================================================================================
 # Функции для работы с векторами
 # =======================================================================================
 
-def sub(x, y):
-    """"возвращает разность двух векторов"""
-    return x[0] - y[0], x[1] - y[1]
-
-
-def add(x, y):
-    """возвращает сумму двух векторов"""
-    return x[0] + y[0], x[1] + y[1]
-
-
-def length(x):
-    """возвращает длину вектора"""
-    return math.sqrt(x[0] * x[0] + x[1] * x[1])
-
-
-def mul(v, k):
-    """возвращает произведение вектора на число"""
-    return v[0] * k, v[1] * k
-
-
-def vec(x, y):
-    """возвращает пару координат, определяющих вектор (координаты точки конца вектора),
-    координаты начальной точки вектора совпадают с началом системы координат (0, 0)"""
-    return sub(y, x)
+# def sub(x, y):
+#     """"возвращает разность двух векторов"""
+#     return x[0] - y[0], x[1] - y[1]
+#
+#
+# def add(x, y):
+#     """возвращает сумму двух векторов"""
+#     return x[0] + y[0], x[1] + y[1]
+#
+#
+# def length(x):
+#     """возвращает длину вектора"""
+#     return math.sqrt(x[0] * x[0] + x[1] * x[1])
+#
+#
+# def mul(v, k):
+#     """возвращает произведение вектора на число"""
+#     return v[0] * k, v[1] * k
+#
+#
+# def vec(x, y):
+#     """возвращает пару координат, определяющих вектор (координаты точки конца вектора),
+#     координаты начальной точки вектора совпадают с началом системы координат (0, 0)"""
+#     return sub(y, x)
 
 
 # =======================================================================================
@@ -46,13 +77,13 @@ def draw_points(points, style="points", width=3, color=(255, 255, 255)):
     if style == "line":
         for p_n in range(-1, len(points) - 1):
             pygame.draw.line(gameDisplay, color,
-                             (int(points[p_n][0]), int(points[p_n][1])),
-                             (int(points[p_n + 1][0]), int(points[p_n + 1][1])), width)
+                             points[p_n].int_pair(),
+                             points[p_n + 1].int_pair(), width)
 
     elif style == "points":
         for p in points:
             pygame.draw.circle(gameDisplay, color,
-                               (int(p[0]), int(p[1])), width)
+                               p.int_pair(), width)
 
 
 def draw_help():
@@ -86,7 +117,7 @@ def get_point(points, alpha, deg=None):
         deg = len(points) - 1
     if deg == 0:
         return points[0]
-    return add(mul(points[deg], alpha), mul(get_point(points, alpha, deg - 1), 1 - alpha))
+    return (points[deg] * alpha) + (get_point(points, alpha, deg - 1) * (1 - alpha))
 
 
 def get_points(base_points, count):
@@ -103,9 +134,9 @@ def get_knot(points, count):
     res = []
     for i in range(-2, len(points) - 2):
         ptn = []
-        ptn.append(mul(add(points[i], points[i + 1]), 0.5))
+        ptn.append((points[i] + points[i + 1]) * 0.5)
         ptn.append(points[i + 1])
-        ptn.append(mul(add(points[i + 1], points[i + 2]), 0.5))
+        ptn.append((points[i + 1] + points[i + 2]) * 0.5)
 
         res.extend(get_points(ptn, count))
     return res
@@ -114,11 +145,14 @@ def get_knot(points, count):
 def set_points(points, speeds):
     """функция перерасчета координат опорных точек"""
     for p in range(len(points)):
-        points[p] = add(points[p], speeds[p])
-        if points[p][0] > SCREEN_DIM[0] or points[p][0] < 0:
-            speeds[p] = (- speeds[p][0], speeds[p][1])
-        if points[p][1] > SCREEN_DIM[1] or points[p][1] < 0:
-            speeds[p] = (speeds[p][0], -speeds[p][1])
+        points[p] = points[p] + speeds[p]
+        #x, y = points[p].int_pair()
+        if points[p].x > SCREEN_DIM[0] or points[p].x < 0:
+            #x_s, y_s = speeds[p].int_pair()
+            speeds[p] = Vec2d((-speeds[p].x, speeds[p].y))
+        if points[p].y > SCREEN_DIM[1] or points[p].y < 0:
+            #x_s, y_s = speeds[p].int_pair()
+            speeds[p] = Vec2d((speeds[p].x, -speeds[p].y))
 
 
 # =======================================================================================
@@ -159,8 +193,8 @@ if __name__ == "__main__":
                     steps -= 1 if steps > 1 else 0
 
             if event.type == pygame.MOUSEBUTTONDOWN:
-                points.append(event.pos)
-                speeds.append((random.random() * 2, random.random() * 2))
+                points.append(Vec2d(event.pos))
+                speeds.append(Vec2d((random.random() * 2, random.random() * 2)))
 
         gameDisplay.fill((0, 0, 0))
         hue = (hue + 1) % 360
